@@ -1,5 +1,5 @@
 # 🚁 Drone Human & Car Detection System
-### Antlings Internship — Phase 2 Technical Assessment (AI/ML)
+### Antlings Internship  Phase 2 Technical Assessment (AI/ML)
 
 A computer vision pipeline for detecting humans and cars in drone/aerial imagery using YOLOv8s fine-tuned on the VisDrone2019 dataset.
 
