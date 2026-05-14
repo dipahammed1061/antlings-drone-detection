@@ -145,7 +145,7 @@ jupyter notebook notebooks/01_EDA.ipynb
 ### Step 4 — Train model (Task 02)
 ```bash
 python scripts/train.py
-# ~2-4 hours on RTX 3060
+# ~4-5 hours on RTX 3060
 # Best weights saved to: results/yolov8s_visdrone_v1/weights/best.pt
 ```
 
@@ -157,7 +157,7 @@ python scripts/detect.py --source F:/VisDrone_Dataset/VisDrone2019-DET-val/image
 
 ### Step 5b — SAHI Enhanced Detection for drone video footage
 ```bash
-# On video (adopted after standard detection missed tiny objects in drone footage)
+# SAHI adopted after BoT-SORT tracking gave poor results on drone footage
 python scripts/detect_sahi.py --source F:/ANTS/test_video.mp4
 # Output: results/videos/sahi_detected.mp4
 
@@ -168,7 +168,7 @@ python scripts/detect_sahi.py --source path/to/image.jpg --compare
 ### Step 6 — BoT-SORT Tracking (Task 04 Bonus)
 ```bash
 python scripts/track.py --source path/to/video.mp4
-# Output: results/videos/track_test_video_botsort.mp4
+# Output: results/videos/coco_test_video_botsort.mp4
 ```
 
 ### Step 7 — Evaluation (Task 05)
