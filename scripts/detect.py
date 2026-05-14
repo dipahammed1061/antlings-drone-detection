@@ -71,7 +71,7 @@ def run_detection(source, save_output=True):
 
             if save_output:
                 cv2.imwrite(str(OUTPUT_DIR / img_path.name), annotated)
-            if i < 5:
+            if i < 0:
                 cv2.imshow("Detection", annotated)
                 print(f"  [{i+1}] {img_path.name} — humans:{h} cars:{c}")
                 cv2.waitKey(1500)

@@ -1,21 +1,12 @@
 """
-TASK 04 (BONUS) - OBJECT TRACKING WITH BoT-SORT
-=================================================
-Tracks humans and cars across video frames using BoT-SORT.
-BoT-SORT includes Camera Motion Compensation (CMC) — ideal
-for drone footage where the camera itself is moving.
-
-Features:
-  - Unique track ID per person/car
-  - Persistent IDs across frames
-  - Human count display
-  - Track history trails (optional)
+track.py — BoT-SORT Multi-Class Object Tracking (Bonus Task)
+=============================================================
+Uses yolov8x.pt (COCO pretrained, 80 classes) — no custom training needed.
+Detects: person, bicycle, car, motorcycle, bus, truck from drone footage.
 
 Usage:
-    python scripts/track.py --source path/to/video.mp4
-
-    # With trail visualization:
-    python scripts/track.py --source path/to/video.mp4 --trails
+    python scripts/track.py --source F:/ANTS/test_video.mp4
+    python scripts/track.py --source F:/ANTS/test_video.mp4 --trails
 """
 
 import os
@@ -23,183 +14,180 @@ import cv2
 import argparse
 import numpy as np
 from pathlib import Path
+from collections import defaultdict, deque
 from ultralytics import YOLO
-from collections import defaultdict
 
-# ─────────────────────────────────────────────
-# CONFIG
-# ─────────────────────────────────────────────
-PROJECT_ROOT = r"F:\antlings_project"
-MODEL_PATH   = os.path.join(PROJECT_ROOT, "runs", "visdrone_yolov8s", "weights", "best.pt")
+# ─── CONFIG ──────────────────────────────────────────────────────────────────
+
+PROJECT_ROOT = r"F:\ANTS"
+MODEL_PATH   = "yolov8x.pt"          # auto-downloads ~130MB on first run
 RESULTS_DIR  = os.path.join(PROJECT_ROOT, "results", "videos")
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
-CLASS_NAMES  = {0: "human", 1: "car"}
-COLORS_BY_ID_BASE = [
-    (0, 255, 80),   (255, 80, 0),   (0, 80, 255),
-    (255, 255, 0),  (0, 255, 255),  (255, 0, 255),
-    (128, 255, 0),  (255, 128, 0),  (0, 128, 255),
-]
-CONF_THRESHOLD = 0.25
+# COCO class IDs we care about → (label, BGR color)
+# These are the EXACT COCO IDs — must match yolov8x.pt
+COCO_CLASSES = {
+    0:  ("person",     (0,   255,  0  )),   # green
+    1:  ("bicycle",    (255, 165,  0  )),   # orange
+    2:  ("car",        (0,   0,    255)),   # red
+    3:  ("motorcycle", (255, 0,    255)),   # magenta
+    5:  ("bus",        (0,   255,  255)),   # cyan
+    7:  ("truck",      (255, 255,  0  )),   # yellow
+}
+TRACKED_IDS  = list(COCO_CLASSES.keys())   # [0,1,2,3,5,7]
+CONF         = 0.25
+TRAIL_LEN    = 30
 
-# ─────────────────────────────────────────────
+# ─── DRAWING HELPERS ─────────────────────────────────────────────────────────
 
-def get_color(track_id):
-    """Returns a consistent color for a given track ID."""
-    return COLORS_BY_ID_BASE[track_id % len(COLORS_BY_ID_BASE)]
+def draw_box(frame, x1, y1, x2, y2, label, color, conf):
+    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+    text = f"{label} {conf:.0%}"
+    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+    cv2.rectangle(frame, (x1, y1 - th - 6), (x1 + tw + 4, y1), color, -1)
+    cv2.putText(frame, text, (x1 + 2, y1 - 4),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
 
-def draw_tracked_frame(frame, tracks, track_history, human_count, frame_idx, fps):
-    """
-    Draw bounding boxes with track IDs, trails, and human count.
-    """
-    H, W = frame.shape[:2]
+def draw_trail(frame, points, color):
+    pts = list(points)
+    for i in range(1, len(pts)):
+        alpha = i / len(pts)
+        c = tuple(int(ch * alpha) for ch in color)
+        cv2.line(frame, pts[i - 1], pts[i], c, 2)
 
-    for track in tracks:
-        x1, y1, x2, y2 = map(int, track[:4])
-        track_id = int(track[4])
-        cls_id   = int(track[5]) if len(track) > 5 else 0
-        conf     = float(track[6]) if len(track) > 6 else 0.0
 
-        color = get_color(track_id)
+def draw_overlay(frame, counts, frame_num, total_frames):
+    """Top-left semi-transparent stats panel."""
+    total = sum(counts.values())
+    lines = [
+        f"Frame: {frame_num}/{total_frames}",
+        f"Tracker: BoT-SORT",
+        f"Objects Tracked: {total}",
+        "---",
+    ]
+    for name, cnt in sorted(counts.items()):
+        lines.append(f"  {name}: {cnt}")
 
-        # Bounding box
-        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+    pad = 10
+    lh  = 22
+    w   = 220
+    h   = pad * 2 + lh * len(lines)
 
-        # Label
-        cls_name = CLASS_NAMES.get(cls_id, "obj")
-        label    = f"ID:{track_id} {cls_name}"
-        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-        cv2.rectangle(frame, (x1, y1 - th - 6), (x1 + tw + 4, y1), color, -1)
-        cv2.putText(frame, label, (x1 + 2, y1 - 4),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
-
-        # Track center for trail
-        cx = (x1 + x2) // 2
-        cy = (y1 + y2) // 2
-        track_history[track_id].append((cx, cy))
-
-        # Keep only last 30 points
-        if len(track_history[track_id]) > 30:
-            track_history[track_id].pop(0)
-
-        # Draw trail
-        points = track_history[track_id]
-        for i in range(1, len(points)):
-            alpha = i / len(points)
-            thickness = max(1, int(alpha * 3))
-            cv2.line(frame, points[i-1], points[i], color, thickness)
-
-    # HUD — top-left overlay
-    panel_h, panel_w = 90, 300
     overlay = frame.copy()
-    cv2.rectangle(overlay, (8, 8), (8 + panel_w, 8 + panel_h), (15, 15, 15), -1)
-    cv2.addWeighted(overlay, 0.65, frame, 0.35, 0, frame)
+    cv2.rectangle(overlay, (0, 0), (w, h), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
 
-    cv2.putText(frame, f"Humans Tracked: {human_count}",
-                (18, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (0, 255, 80), 2)
-    cv2.putText(frame, f"Frame: {frame_idx}",
-                (18, 68), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1)
-    cv2.putText(frame, f"Tracker: BoT-SORT",
-                (18, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 150, 255), 1)
-
-    return frame
-
-
-def run_tracking(model_path, source_path, save_dir, show_trails=True):
-    model = YOLO(model_path)
-
-    source = Path(source_path)
-    cap = cv2.VideoCapture(str(source))
-    if not cap.isOpened():
-        print(f"❌ Cannot open: {source_path}")
-        return
-
-    W     = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    H     = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    FPS   = cap.get(cv2.CAP_PROP_FPS) or 25
-    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-    out_path = Path(save_dir) / f"track_{source.stem}_botsort.mp4"
-    fourcc   = cv2.VideoWriter_fourcc(*"mp4v")
-    writer   = cv2.VideoWriter(str(out_path), fourcc, FPS, (W, H))
-
-    print(f"\n  Video: {source.name}")
-    print(f"  Resolution: {W}x{H} @ {FPS:.1f} FPS | Frames: {total}")
-    print(f"  Output: {out_path}")
-    print("  Tracking with BoT-SORT (Camera Motion Compensation enabled)...")
-
-    track_history = defaultdict(list)
-    frame_idx = 0
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        # BoT-SORT tracking — built into Ultralytics
-        results = model.track(
-            frame,
-            persist=True,
-            tracker="botsort.yaml",
-            conf=CONF_THRESHOLD,
-            iou=0.45,
-            verbose=False,
-        )
-
-        tracks = []
-        human_count = 0
-
-        if results[0].boxes.id is not None:
-            boxes   = results[0].boxes.xyxy.cpu().numpy()
-            ids     = results[0].boxes.id.cpu().numpy()
-            classes = results[0].boxes.cls.cpu().numpy()
-            confs   = results[0].boxes.conf.cpu().numpy()
-
-            for box, tid, cls, conf in zip(boxes, ids, classes, confs):
-                tracks.append([*box, int(tid), int(cls), float(conf)])
-                if int(cls) == 0:
-                    human_count += 1
-
-        annotated = draw_tracked_frame(
-            frame.copy(), tracks, track_history, human_count, frame_idx, FPS
-        )
-        writer.write(annotated)
-        frame_idx += 1
-
-        if frame_idx % 50 == 0:
-            print(f"  Frame {frame_idx}/{total} | Humans in frame: {human_count}")
-
-    cap.release()
-    writer.release()
-    print(f"\n  ✅ Tracking complete!")
-    print(f"  Output video: {out_path}")
+    y = pad + lh - 4
+    for line in lines:
+        color = (0, 255, 255) if "Objects" in line else (200, 200, 200)
+        if "Frame" in line or "Tracker" in line:
+            color = (0, 255, 0)
+        cv2.putText(frame, line, (pad, y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+        y += lh
 
 
-# ─────────────────────────────────────────────
-# MAIN
-# ─────────────────────────────────────────────
-def parse_args():
-    parser = argparse.ArgumentParser(description="Task 04 - BoT-SORT Tracking")
-    parser.add_argument("--source",   type=str, required=True,
-                        help="Path to video file (.mp4, .avi)")
-    parser.add_argument("--model",    type=str, default=MODEL_PATH)
-    parser.add_argument("--trails",   action="store_true", default=True,
-                        help="Show tracking trail lines")
-    parser.add_argument("--save_dir", type=str, default=RESULTS_DIR)
-    return parser.parse_args()
+# ─── MAIN TRACKING ───────────────────────────────────────────────────────────
 
-
-if __name__ == "__main__":
-    args = parse_args()
-
+def run(source: str, show_trails: bool):
     print("=" * 55)
     print("  TASK 04 — BoT-SORT Object Tracking (Bonus)")
     print("=" * 55)
+    print(f"[INFO] Loading {MODEL_PATH} (auto-downloads if needed)...")
 
-    if not os.path.exists(args.model):
-        print(f"❌ Model not found: {args.model}")
-        print("   Run train.py first!")
-        exit(1)
+    model = YOLO(MODEL_PATH)
 
-    run_tracking(args.model, args.source, args.save_dir, args.trails)
+    # Verify COCO classes are present
+    print("[INFO] Confirmed classes in model:")
+    for cid, (cname, _) in COCO_CLASSES.items():
+        actual = model.names.get(cid, "MISSING")
+        print(f"       class {cid} = {actual}  ({'✓' if actual == cname else '✗ MISMATCH'})")
+
+    # Open source video
+    cap = cv2.VideoCapture(source)
+    if not cap.isOpened():
+        raise FileNotFoundError(f"Cannot open: {source}")
+
+    W      = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    H      = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    FPS    = cap.get(cv2.CAP_PROP_FPS) or 10.0
+    NFRAMES = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    cap.release()
+
+    out_name = Path(source).stem + "_botsort.mp4"
+    out_path = os.path.join(RESULTS_DIR, out_name)
+    writer   = cv2.VideoWriter(out_path,
+                               cv2.VideoWriter_fourcc(*"mp4v"),
+                               FPS, (W, H))
+
+    print(f"\n  Video: {Path(source).name}")
+    print(f"  Resolution: {W}x{H} @ {FPS:.1f} FPS  |  Frames: {NFRAMES}")
+    print(f"  Output: {out_path}")
+    print(f"  Tracking with BoT-SORT (Camera Motion Compensation enabled)...\n")
+
+    trails: dict = defaultdict(lambda: deque(maxlen=TRAIL_LEN))
+    frame_num = 0
+
+    # KEY: classes= tells YOLO to only detect the classes we care about
+    results = model.track(
+        source   = source,
+        stream   = True,
+        tracker  = "botsort.yaml",
+        conf     = CONF,
+        iou      = 0.45,
+        classes  = TRACKED_IDS,   # ← only detect person/bike/car/moto/bus/truck
+        imgsz    = 1280,           # ← higher resolution catches small objects
+        persist  = True,           # ← keep IDs across frames
+        verbose  = False,
+    )
+
+    for result in results:
+        frame     = result.orig_img.copy()
+        frame_num += 1
+        counts: dict = defaultdict(int)
+
+        if result.boxes is not None and len(result.boxes) > 0:
+            has_ids = result.boxes.id is not None
+
+            for i, box in enumerate(result.boxes):
+                cls_id = int(box.cls[0])
+                conf   = float(box.conf[0])
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+
+                name, color = COCO_CLASSES.get(cls_id, ("object", (128, 128, 128)))
+                counts[name] += 1
+
+                # Track ID (if available)
+                tid = int(box.id[0]) if has_ids else i
+                label = f"ID:{tid} {name}"
+
+                # Trail
+                if show_trails:
+                    cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                    trails[tid].append((cx, cy))
+                    draw_trail(frame, trails[tid], color)
+
+                draw_box(frame, x1, y1, x2, y2, label, color, conf)
+
+        draw_overlay(frame, counts, frame_num, NFRAMES)
+        writer.write(frame)
+
+        if frame_num % 5 == 0:
+            total = sum(counts.values())
+            print(f"  Frame {frame_num:3d}/{NFRAMES}  |  objects={total}  "
+                  + "  ".join(f"{k}:{v}" for k, v in sorted(counts.items())))
+
+    writer.release()
+    print(f"\n✅ Tracking complete!")
+    print(f"   Output video: {out_path}")
+
+
+# ─── CLI ─────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--source", required=True, help="Path to input video")
+    ap.add_argument("--trails", action="store_true", help="Draw motion trails")
+    args = ap.parse_args()
+    run(args.source, args.trails)

@@ -25,9 +25,9 @@ from ultralytics import YOLO
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
-PROJECT_ROOT = r"F:\antlings_project"
-MODEL_PATH   = os.path.join(PROJECT_ROOT, "runs", "visdrone_yolov8s", "weights", "best.pt")
-YAML_PATH    = os.path.join(PROJECT_ROOT, "visdrone_remapped.yaml")
+PROJECT_ROOT = r"F:\ANTS"
+MODEL_PATH = os.path.join(PROJECT_ROOT, "results", "yolov8s_visdrone_v1", "weights", "best.pt")
+YAML_PATH = os.path.join(PROJECT_ROOT, "visdrone_remapped.yaml")
 RESULTS_DIR  = os.path.join(PROJECT_ROOT, "results")
 METRICS_DIR  = os.path.join(RESULTS_DIR, "metrics")
 IMAGES_DIR   = os.path.join(RESULTS_DIR, "images")
@@ -82,35 +82,35 @@ def print_metrics_table(metrics):
     print("     Tiny object sizes and dense scenes lower scores vs COCO.")
 
 
-def benchmark_fps(model, test_img_dir, n_samples=50):
-    """Measure inference FPS on test images."""
-    print("\n[2/4] Benchmarking FPS...")
-    img_dir = Path(test_img_dir)
-    all_imgs = list(img_dir.glob("*.jpg"))
-    samples  = random.sample(all_imgs, min(n_samples, len(all_imgs)))
-
+def benchmark_fps(model, img_dir, n=50):
+    img_files = list(Path(img_dir).glob("*.jpg"))
+    if len(img_files) == 0:
+        print("  No images found for FPS benchmark")
+        return 0
+    img_files = img_files[:min(n, len(img_files))]
     times = []
-    for img_path in samples:
-        frame = cv2.imread(str(img_path))
-        if frame is None:
+    for img_path in img_files:
+        img = cv2.imread(str(img_path))
+        if img is None:
             continue
-        t0 = time.perf_counter()
-        _ = model(frame, conf=CONF, verbose=False)
-        t1 = time.perf_counter()
-        times.append(t1 - t0)
-
-    avg_ms  = np.mean(times) * 1000
-    avg_fps = 1.0 / np.mean(times)
+        start = time.time()
+        model(img, verbose=False)
+        times.append(time.time() - start)
+    if len(times) == 0:
+        return 0
+    avg_ms = np.mean(times) * 1000
+    fps = 1.0 / np.mean(times)
     print(f"  Avg inference time : {avg_ms:.1f} ms/image")
-    print(f"  Avg FPS            : {avg_fps:.1f}")
-    return avg_fps, avg_ms
+    print(f"  Avg FPS            : {fps:.1f}")
+    return fps
 
 
 def generate_prediction_grid(model, test_img_dir, save_path, n=6):
     """Generate a grid of sample prediction images."""
     print("\n[3/4] Generating prediction sample grid...")
     img_dir = Path(test_img_dir)
-    samples = random.sample(list(img_dir.glob("*.jpg")), n)
+    all_imgs = list(img_dir.glob("*.jpg"))
+    samples = random.sample(all_imgs, min(n, len(all_imgs)))
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     fig.suptitle("Task 03 — Sample Detection Results\n(Green=Human, Orange=Car)",
@@ -218,8 +218,8 @@ if __name__ == "__main__":
     print_metrics_table(metrics)
 
     # 2. FPS benchmark
-    test_img_dir = os.path.join(PROJECT_ROOT, "data", "processed", "test", "images")
-    fps, ms = benchmark_fps(model, test_img_dir)
+    test_img_dir = "F:/ANTS/VisDrone_Dataset/VisDrone2019-DET-val/images"
+    fps = benchmark_fps(model, test_img_dir)
 
     # 3. Prediction grid
     grid_path = os.path.join(IMAGES_DIR, "06_prediction_samples.png")
