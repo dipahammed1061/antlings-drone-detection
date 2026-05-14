@@ -3,7 +3,6 @@ archive.zip
 test_video.mp4
 yolov8x.pt
 yolov8s.pt
-results/yolov8s_visdrone_v1/
 __pycache__/
 *.pyc
 *.pyo
