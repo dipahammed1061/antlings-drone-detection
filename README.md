@@ -100,8 +100,8 @@ F:/ANTS/
 │   ├── preprocess.py      # Task 01 — class remapping (10→2 classes)
 │   ├── train.py           # Task 02 — YOLOv8s training, imgsz=960
 │   ├── detect.py          # Task 03 — YOLOv8s detection + human/car counting
-│   ├── detect_sahi.py     # Task 03+ — SAHI sliced inference for drone video
-│   ├── track.py           # Task 04 — BoT-SORT tracking with CMC (bonus)
+│   ├── detect_sahi.py    # Task 04+ — SAHI sliced inference after BoT-SORT tracking failed
+│   ├── track.py           # Task 04 — BoT-SORT tracking attempted (bonus), replaced by SAHI
 │   └── evaluate.py        # Task 05 — mAP, Precision, Recall, FPS metrics
 ├── notebooks/
 │   └── 01_EDA.ipynb       # Task 01 — dataset analysis and visualizations
