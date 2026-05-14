@@ -105,25 +105,22 @@ F:/ANTS/
 │   └── evaluate.py        # Task 05 — mAP, Precision, Recall, FPS metrics
 ├── notebooks/
 │   └── 01_EDA.ipynb       # Task 01 — dataset analysis and visualizations
-├── outputs/
-│   └── preprocessed/      # Remapped 2-class labels (train/val/test)
 ├── results/
 │   ├── images/
-│   │   ├── detections/          # Standard YOLO output (548 annotated images)
-│   │   ├── detections_sahi/     # SAHI enhanced output for drone video
+│   │   ├── detections_sahi/     # SAHI enhanced detection outputs
 │   │   └── sahi_comparison/     # Side-by-side Standard vs SAHI comparison
-│   ├── videos/                  # Tracking and SAHI output videos
-│   └── metrics/                 # mAP, PR curves, confusion matrix charts
-├── Short Reports/               # Task summary reports
+│   ├── metrics/                 # mAP, PR curves, confusion matrix charts
+│   └── yolov8s_visdrone_v1/    # Training outputs, loss curves, results.csv
 ├── visdrone_remapped.yaml       # YOLO training config (2-class remapped)
 ├── setup_project.py             # Creates folder structure
-├── make_video.py                # Assembles annotated frames into demo video
 └── README.md
 ```
 
-> ⚠️ **Large files not included in repo:**
+> > ⚠️ **Large files not included in repo:**
 > - `VisDrone_Dataset/` — download from Kaggle link above
-> - `yolov8s.pt`, `yolov8x.pt` — download from [Ultralytics releases](https://github.com/ultralytics/assets/releases)
+> - `outputs/preprocessed/` — run preprocess.py to generate (1.82GB)
+> - `yolov8s.pt`, `yolov8x.pt` — download from Ultralytics releases
+> - `results/videos/` — see Google Drive links in Demo Video section
 > - `archive.zip`, `test_video.mp4` — excluded (size limits)
 
 ---
