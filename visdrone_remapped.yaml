@@ -1,0 +1,11 @@
+# VisDrone Remapped — 2 classes: human, car
+path: F:/ANTS/outputs/preprocessed
+
+train: train/images
+val:   val/images
+test:  test/images
+
+nc: 2
+names:
+  0: human
+  1: car
