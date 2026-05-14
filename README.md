@@ -234,8 +234,12 @@ python scripts/evaluate.py
 
 ## Demo Video
 
-[Google Drive Link — to be added before May 16 submission]
+| Video | Description | Link |
+|-------|-------------|------|
+| SAHI Detection | Enhanced drone video detection using SAHI sliced inference on aerial footage | [Google Drive](https://drive.google.com/drive/folders/1DmfTWMqYqQujr1-SkwGuKXNqnmN98MK_?usp=sharing) |
+| BoT-SORT Tracking | Object tracking with Camera Motion Compensation — COCO yolov8x detection + BoT-SORT tracker | [Google Drive](https://drive.google.com/drive/folders/1DmfTWMqYqQujr1-SkwGuKXNqnmN98MK_?usp=sharing) |
 
+> Both videos available in the shared Google Drive folder above.
 ---
 
 *Built for Antlings Internship Program — Phase 2 Technical Assessment — May 2026*
