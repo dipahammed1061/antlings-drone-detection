@@ -24,8 +24,10 @@ This project implements a full object detection pipeline for aerial drone imager
 |------|-------------|
 | Task 01 | Dataset understanding, preprocessing, class remapping, EDA visualizations |
 | Task 02 | YOLOv8s fine-tuning with drone-specific augmentation at imgsz=960 |
-| Task 03 | Human & car detection with SAHI sliced inference and real-time human count overlay |
-| Task 04 | BoT-SORT object tracking with Camera Motion Compensation (bonus) |
+| Task 03 | Human & car detection with bounding boxes and real-time human count overlay |
+| Task 04 | BoT-SORT object tracking with Camera Motion Compensation (bonus) — 
+VisDrone and COCO yolov8x both attempted; SAHI detection proved more 
+effective for drone footage |
 | Task 05 | Evaluation metrics (mAP, Precision, Recall, FPS) and visualization |
 
 **Key design decisions:**
