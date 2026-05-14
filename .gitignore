@@ -6,3 +6,7 @@ yolov8s.pt
 __pycache__/
 *.pyc
 *.pyo
+results/videos/
+make_video.py
+Short Reports/
+outputs/
