@@ -208,7 +208,7 @@ python scripts/evaluate.py
 - Beats VisDrone benchmark mAP by ~26 percentage points
 
 **Limitations:**
-- Human recall (62.8%) lower than car (85.8%) — humans are 2.8x smaller in pixel area
+- Human recall (58.2%) lower than car (84.8%) — humans are 2.8x smaller in pixel area
 - Very small objects (<10px) remain difficult even at imgsz=960
 - Training limited to 960px due to local RAM — 1280px would give ~3-5% more mAP (needs cloud GPU)
 - Counting logic is per-frame, not unique person count — tracking needed for unique individual counting
