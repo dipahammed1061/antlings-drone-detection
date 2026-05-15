@@ -231,6 +231,10 @@ python scripts/evaluate.py
 
 ## Demo Video
 
+[![Demo Video](https://img.shields.io/badge/▶_Watch_Demo-Google_Drive-blue?style=for-the-badge&logo=google-drive)](https://drive.google.com/file/d/1Co_HFIKPE1bH-dw2n-gaBjoRmJu3Hbw6/view?usp=sharing)
+
+> Full walkthrough of all 5 tasks — Dataset, Training, Detection, Tracking, and Evaluation.
+
 | Video | Description | Link |
 |-------|-------------|------|
 | SAHI Detection | Enhanced drone video detection using SAHI sliced inference on aerial footage | [Google Drive](https://drive.google.com/drive/folders/1DmfTWMqYqQujr1-SkwGuKXNqnmN98MK_?usp=sharing) |
