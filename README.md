@@ -183,14 +183,14 @@ python scripts/evaluate.py
 
 | Metric | Overall | Human Only | Car Only |
 |--------|---------|------------|----------|
-| mAP@50 | **74.22%** | 58.22% | 84.75% |
-| mAP@50-95 | 42.80%| 26.60% | 59.30% |
+| mAP@50 | **71.50%** | 58.20% | 84.80% |
+| mAP@50-95 | 42.80% | 26.60% | 59.30% |
 | Precision | 80.76% | 74.30% | 87.20% |
 | Recall | 74.33% | 62.80% | 85.80% |
 | FPS (RTX 3060) | **64.7 FPS** | — | — |
 | Inference time | 11.7 ms/image | — | — |
 
-> **VisDrone benchmark context:** mAP@50 of 25–45% is considered competitive. Our model achieves **71.49%** — exceeding the benchmark by ~26 percentage points.
+> **VisDrone benchmark context:** mAP@50 of 25–45% is considered competitive. Our model achieves **71.50%** — exceeding the benchmark by over 26 percentage points.
 
 **Detection on 548 validation images:**
 - Total humans detected: 11,182 (~20.4 per image)
